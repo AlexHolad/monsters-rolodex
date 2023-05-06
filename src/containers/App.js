@@ -1,56 +1,62 @@
 import React, { useEffect } from "react";
-import { connect } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { onsearch, selectSearchField } from "../features/search/searchSlice";
+import { fetchMonsters, selectMonsters } from "../features/fetch/fetchSlice";
+
 import { CardList } from "../components/card-list/card-list.component";
 import { SearchBox } from "../components/search-box/search-box.component";
 import "./App.css";
 
-import { requestRobots, setSearchField } from "../actions";
 
-const mapStateToProps = (state) => {
-  return {
-    searchField: state.searchRobots.searchField,
-    robots: state.requestRobots.robots,
-    isPending: state.requestRobots.isPending,
-    error: state.requestRobots.error,
-  };
-};
 
-const mapDispatchToProps = (dispatch) => {
-  return {
-    onSearchChange: (event) => dispatch(setSearchField(event.target.value)),
-    onRequestRobots: () => dispatch(requestRobots()),
-  };
-};
 
 const App = (props) => {
-  const {
-    searchField,
-    onSearchChange,
-    robots,
-    onRequestRobots,
-    isPending,
-  } = props;
+  const searchField = useSelector(selectSearchField)
+  const dispatch = useDispatch()
+
+  const monsters = useSelector(selectMonsters)
+
+  const monsterStatus = useSelector(state => state.monsters.status)
+  const error = useSelector(state => state.monsters.error)
 
   useEffect(() => {
-    onRequestRobots();
-  }, [onRequestRobots]);
+    if (monsterStatus === 'idle') {
+      dispatch(fetchMonsters())
+    }
+  }, [dispatch, monsterStatus]);
 
-  const filteredMonsters = robots.filter((robot) =>
+  let content
+
+  if (monsterStatus === 'loading') {
+    content = <h1>Loading...</h1>
+  } else if (monsterStatus === 'succeeded') {
+    // Sort posts in reverse chronological order by datetime string
+    const filteredMonsters = monsters.filter((robot) =>
     robot.name.toLowerCase().includes(searchField.toLowerCase())
   );
 
-  return isPending ? (
-    <h1>Loading...</h1>
-  ) : (
+    content = <CardList monsters={filteredMonsters} />
+  } else if (monsterStatus === 'failed') {
+    content = <div>{error}</div>
+  }
+
+
+  const onSearchChange = (e) => {
+    dispatch(onsearch(e.target.value))
+  }
+
+  
+
+  return (
     <div className="App">
       <h1>Monsters Rolodex</h1>
       <SearchBox
         placeholder="search monsters"
         onSearchChange={onSearchChange}
       />
-      <CardList monsters={filteredMonsters} />
+      {content}
     </div>
   );
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(App);
+export default App;
